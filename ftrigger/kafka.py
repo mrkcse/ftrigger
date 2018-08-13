@@ -12,7 +12,7 @@ from confluent_kafka import Consumer
 
 from .trigger import Functions
 
-
+logging.basicConfig(level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
@@ -23,6 +23,7 @@ class KafkaTrigger(object):
         self.functions = Functions(name='kafka')
         self.config = {
             'bootstrap.servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', kafka),
+             #'debug': 'cgrp,topic,fetch,protocol',
             'group.id': os.getenv('KAFKA_CONSUMER_GROUP', self.functions._register_label),
             'default.topic.config': {
                 'auto.offset.reset': 'largest',
@@ -77,11 +78,13 @@ class KafkaTrigger(object):
                     jq_filter = functions.arguments(function).get('filter')
                     try:
                         if jq_filter and not pyjq.first(jq_filter, value):
+                            log.debug('Message filtered: key:' + str(key) + ' value:' + str(value) )
                             continue
                     except:
                         log.error(f'Could not filter message value with {jq_filter}')
                     data = self.function_data(function, topic, key, value)
                     functions.gateway.post(functions._gateway_base + f'/function/{function["name"]}', data=data)
+                    log.debug('Function: ' + f'/function/{function["name"]}' + ' Data:' + data )
 
     def function_data(self, function, topic, key, value):
         data_opt = self.functions.arguments(function).get('data', 'key')
